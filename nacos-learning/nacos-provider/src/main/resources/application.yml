@@ -1,0 +1,42 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: nacos-provider
+  profiles:
+    active: dev
+  config:
+    import:
+      - nacos:nacos-provider-dev.yaml?group=DEFAULT_GROUP
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://172.30.1.125:3306/nacolearn?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: deploy
+    password: NN2mq8*xq
+  cloud:
+    nacos:
+      discovery:
+        # Nacos 服务注册中心地址（如果应用和 Nacos 不在同一台机器，请改成 Nacos 服务器 IP）
+        server-addr: localhost:8848
+      config:
+        # Nacos 配置中心地址
+        server-addr: localhost:8848
+        # 配置文件扩展名
+        file-extension: yaml
+        
+# 管理端点配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+  endpoint:
+    health:
+      show-details: always
+
+# 日志配置
+logging:
+  level:
+    com.zxx.learning: debug
+    org.springframework.cloud: info

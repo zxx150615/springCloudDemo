@@ -1,0 +1,22 @@
+# Nacos配置中心示例配置
+# Data ID: nacos-gateway-dev.yaml
+# Group: DEFAULT_GROUP
+# 命名空间: dev (可选)
+
+# 应用配置示例
+app:
+  name: nacos-gateway
+  version: 1.0.0
+  description: Nacos Gateway网关服务示例
+
+# 自定义配置示例
+custom:
+  message: "这是Gateway从Nacos配置中心读取的配置"
+  timeout: 10000
+  enabled: true
+
+# Gateway限流配置
+gateway:
+  rate-limit:
+    replenish-rate: 10
+    burst-capacity: 20

@@ -1,0 +1,158 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: nacos-gateway
+  profiles:
+    active: dev
+  config:
+    import:
+      - nacos:nacos-gateway-dev.yaml?group=DEFAULT_GROUP
+  
+  # Redis配置 - 用于限流
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: 
+      database: 0
+      timeout: 3000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+  
+  # Gateway路由配置
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+      config:
+        server-addr: localhost:8848
+        file-extension: yaml
+    gateway:
+      # 启用服务发现
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      
+      # 路由规则配置
+      routes:
+        # 用户服务路由
+        - id: user-service-route
+          uri: lb://user-service
+          predicates:
+            - Path=/api/user/**
+          filters:
+            # 路径重写：去掉 /api 前缀
+            - StripPrefix=1
+            # 请求限流
+            - name: RequestRateLimiter
+              args:
+                # 限流键解析器：基于用户ID（从请求头 X-User-Id 或参数 userId 获取）
+                key-resolver: '#{@userKeyResolver}'
+                # 令牌桶容量
+                redis-rate-limiter.replenishRate: 10
+                # 每秒允许的请求数
+                redis-rate-limiter.burstCapacity: 20
+        
+        # 订单服务路由
+        - id: order-service-route
+          uri: lb://order-service
+          predicates:
+            - Path=/api/order/**
+          filters:
+            # 路径重写：去掉 /api 前缀
+            - StripPrefix=1
+            # 请求限流
+            - name: RequestRateLimiter
+              args:
+                # 限流键解析器：基于用户ID（从请求头 X-User-Id 或参数 userId 获取）
+                key-resolver: '#{@userKeyResolver}'
+                # 令牌桶容量
+                redis-rate-limiter.replenishRate: 10
+                # 每秒允许的请求数
+                redis-rate-limiter.burstCapacity: 20
+      
+      # 全局过滤器配置
+      default-filters:
+        # 请求日志过滤器
+        - name: RequestLogging
+          args:
+            level: INFO
+      
+      # 跨域配置
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: false
+            maxAge: 3600
+
+# 管理端点配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+  endpoint:
+    health:
+      show-details: always
+
+# Sa-Token配置
+sa-token:
+  # token名称 (同时也是cookie名称)
+  token-name: Authorization
+  # token有效期，单位s 默认30天, -1代表永不过期
+  timeout: 2592000
+  # token临时有效期 (指定时间内无操作就视为token过期) 单位: 秒
+  activity-timeout: -1
+  # 是否允许同一账号并发登录 (为true时允许一起登录, 为false时新登录挤掉旧登录)
+  is-concurrent: true
+  # 在多人登录同一账号时，是否共用一个token (为true时所有登录共用一个token, 为false时每次登录新建一个token)
+  is-share: true
+  # token风格
+  token-style: uuid
+  # 是否输出操作日志
+  is-log: false
+  # 是否从cookie中读取token
+  is-read-cookie: false
+  # 是否从请求体里读取token
+  is-read-body: false
+  # 是否从请求头里读取token
+  is-read-head: true
+
+# Gateway认证配置
+gateway:
+  auth:
+    # 白名单路径（不需要认证的路径）
+    ignore-urls:
+      - /api/auth/login
+      - /api/auth/register
+      - /api/public/**
+      - /actuator/**
+    # 路径-角色映射（路径 -> 所需角色，多个角色用逗号分隔，拥有任意一个即可）
+    path-roles:
+      /api/admin/**: admin
+      /api/user/delete: admin
+      /api/user/**: user,admin
+      /api/order/**: user,admin
+
+# 日志配置
+logging:
+  level:
+    com.zxx.learning: debug
+    org.springframework.cloud.gateway: debug
+    org.springframework.web: info
+    cn.dev33.satoken: info

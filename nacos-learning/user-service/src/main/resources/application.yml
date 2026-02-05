@@ -1,0 +1,22 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: user-service
+
+# 管理端点配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+  endpoint:
+    health:
+      show-details: always
+
+# 日志配置
+logging:
+  level:
+    com.zxx.learning: debug
+    org.springframework.cloud: info

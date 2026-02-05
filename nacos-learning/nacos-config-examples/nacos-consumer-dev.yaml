@@ -1,0 +1,16 @@
+# Nacos配置中心示例配置
+# Data ID: nacos-consumer-dev.yaml
+# Group: DEFAULT_GROUP
+# 命名空间: dev (可选)
+
+# 应用配置示例
+app:
+  name: nacos-consumer
+  version: 1.0.0
+  description: Nacos服务消费者示例
+
+# 自定义配置示例
+custom:
+  message: "这是Consumer从Nacos配置中心读取的配置"
+  timeout: 3000
+  enabled: true

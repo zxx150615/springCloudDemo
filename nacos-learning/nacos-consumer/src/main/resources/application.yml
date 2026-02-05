@@ -1,0 +1,46 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: nacos-consumer
+  profiles:
+    active: dev
+  config:
+    import:
+      - nacos:nacos-consumer-dev.yaml?group=DEFAULT_GROUP
+  cloud:
+    nacos:
+      discovery:
+        # Nacos 服务注册中心地址（如果应用和 Nacos 不在同一台机器，请改成 Nacos 服务器 IP）
+        server-addr: localhost:8848
+      config:
+        # Nacos 配置中心地址
+        server-addr: localhost:8848
+        # 配置文件扩展名
+        file-extension: yaml
+
+# Feign配置
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 5000
+        readTimeout: 5000
+
+# 管理端点配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+  endpoint:
+    health:
+      show-details: always
+
+# 日志配置
+logging:
+  level:
+    com.zxx.learning: debug
+    org.springframework.cloud: info
+    com.zxx.learning.consumer.feign: debug
