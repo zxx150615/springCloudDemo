@@ -1,0 +1,27 @@
+# Nacos配置中心示例配置
+# Data ID: user-service-dev.yaml
+# Group: DEFAULT_GROUP
+# 命名空间: dev (可选)
+
+# 应用配置示例
+app:
+  name: user-service
+  version: 1.0.0
+  description: 用户服务示例（从 Nacos 读取远程配置）
+
+# 自定义配置示例
+custom:
+  # 可用于演示 @RefreshScope + @Value 动态刷新
+  message: "这是从 Nacos 配置中心读取的 user-service 配置"
+  timeout: 3000
+  enabled: true
+
+# MySQL 用户数据库配置示例
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # 根据自己的实际环境调整地址/数据库名/参数
+    url: jdbc:mysql://127.0.0.1:3306/userdb?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: user
+    password: 123456
+

@@ -9,11 +9,11 @@ spring:
   config:
     import:
       - nacos:nacos-provider-dev.yaml?group=DEFAULT_GROUP
-  datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://172.30.1.125:3306/nacolearn?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-    username: deploy
-    password: NN2mq8*xq
+  # datasource:
+  #   driver-class-name: com.mysql.cj.jdbc.Driver
+  #   url: jdbc:mysql://172.30.1.125:3306/nacolearn?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+  #   username: deploy
+  #   password: NN2mq8*xq
   cloud:
     nacos:
       discovery:

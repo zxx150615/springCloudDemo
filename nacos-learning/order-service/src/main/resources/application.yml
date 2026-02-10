@@ -11,17 +11,7 @@ spring:
       config:
         server-addr: localhost:8848
         file-extension: yaml
+  config:
+    import:
+      - nacos:order-service-dev.yaml?group=DEFAULT_GROUP
 
-# Feign配置
-feign:
-  client:
-    config:
-      default:
-        connectTimeout: 5000
-        readTimeout: 5000
-
-# 日志配置
-logging:
-  level:
-    com.zxx.learning: debug
-    org.springframework.cloud: info

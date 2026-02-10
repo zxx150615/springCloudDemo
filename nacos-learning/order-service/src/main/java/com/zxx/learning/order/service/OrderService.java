@@ -23,11 +23,11 @@ public class OrderService {
 
     @Autowired
     private UserServiceClient userServiceClient;
-
+    
     // 模拟数据库，使用内存存储
     private final List<Order> orderDatabase = new ArrayList<>();
     private final AtomicLong idGenerator = new AtomicLong(1);
-
+    
     /**
      * 根据ID获取订单
      */
@@ -60,7 +60,7 @@ public class OrderService {
         
         return order;
     }
-
+    
     /**
      * 获取订单列表
      */
@@ -84,7 +84,7 @@ public class OrderService {
         
         return orderDatabase;
     }
-
+    
     /**
      * 创建订单
      */
@@ -101,7 +101,7 @@ public class OrderService {
         
         order.setId(idGenerator.getAndIncrement());
         order.setOrderNo("ORD" + String.format("%08d", order.getId()));
-        order.setCreateTime(LocalDateTime.now());
+            order.setCreateTime(LocalDateTime.now());
         if (order.getStatus() == null) {
             order.setStatus(1);
         }
@@ -109,7 +109,7 @@ public class OrderService {
         
         return order;
     }
-
+    
     /**
      * 根据用户ID获取订单列表
      */
@@ -131,7 +131,7 @@ public class OrderService {
         
         return orders;
     }
-
+    
     /**
      * 支付订单
      */

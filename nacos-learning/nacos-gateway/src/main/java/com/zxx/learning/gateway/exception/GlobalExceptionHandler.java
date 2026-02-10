@@ -64,7 +64,7 @@ public class GlobalExceptionHandler implements ErrorWebExceptionHandler {
                       "\",\"message\":\"" + errorResponse.get("message") + 
                       "\",\"timestamp\":" + errorResponse.get("timestamp") + "}";
         
-        DataBuffer buffer = response.bufferFactory().wrap(json.getBytes(StandardCharsets.UTF_8));
-        return response.writeWith(Mono.just(buffer));
+            DataBuffer buffer = response.bufferFactory().wrap(json.getBytes(StandardCharsets.UTF_8));
+            return response.writeWith(Mono.just(buffer));
     }
 }

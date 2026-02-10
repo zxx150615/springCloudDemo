@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.filter.ratelimit.KeyResolver;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
@@ -37,6 +38,7 @@ public class RedisLimiterConfig {
      * 从请求头或参数中获取用户ID进行限流
      */
     @Bean
+    @Primary
     public KeyResolver userKeyResolver() {
         return exchange -> {
             // 优先从请求头获取用户ID

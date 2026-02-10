@@ -4,12 +4,11 @@ import cn.dev33.satoken.reactor.filter.SaReactorFilter;
 import cn.dev33.satoken.router.SaHttpMethod;
 import cn.dev33.satoken.router.SaRouter;
 import cn.dev33.satoken.stp.StpUtil;
-import cn.dev33.satoken.util.SaHolder;
+import cn.dev33.satoken.context.SaHolder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.redis.core.ReactiveRedisTemplate;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -25,9 +24,6 @@ import java.util.Map;
 @Slf4j
 @Configuration
 public class SaTokenConfig {
-
-    @Autowired
-    private ReactiveRedisTemplate<String, Object> redisTemplate;
 
     @Autowired
     private IgnoreUrlsConfig ignoreUrlsConfig;

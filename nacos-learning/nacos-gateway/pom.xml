@@ -27,6 +27,23 @@
             <artifactId>spring-cloud-starter-alibaba-nacos-config</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-loadbalancer</artifactId>
+        </dependency>
+        <!-- 
+            同步 Redis 依赖 - 用于所有业务代码
+            技术栈声明：本项目统一使用 StringRedisTemplate（同步版本），不使用 ReactiveStringRedisTemplate
+            详见项目根目录下的 REDIS_TECH_STACK.md 文档
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+        <!-- 
+            响应式 Redis 依赖 - 仅用于 Gateway 限流功能（框架内部使用，业务代码不直接操作）
+            注意：所有业务代码必须使用上面的同步版本
+        -->
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis-reactive</artifactId>
         </dependency>

@@ -19,7 +19,7 @@ spring:
         server-addr: localhost:8848
         # 配置文件扩展名
         file-extension: yaml
-
+      
 # Feign配置
 feign:
   client:

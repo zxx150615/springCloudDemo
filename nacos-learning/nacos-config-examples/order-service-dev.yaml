@@ -1,0 +1,24 @@
+# Nacos配置中心示例配置
+# Data ID: nacos-provider-dev.yaml
+# Group: DEFAULT_GROUP
+# 命名空间: dev (可选)
+
+# 应用配置示例
+app:
+  name: nacos-provider
+  version: 1.0.0
+  description: Nacos服务提供者示例
+
+# 自定义配置示例
+custom:
+  message: "这是从Nacos配置中心读取的配置"
+  timeout: 5000
+  enabled: true
+
+# MySQL数据库配置
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://172.30.1.125:3306/nacolearn?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: deploy
+    password: NN2mq8*xq

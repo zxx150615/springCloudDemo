@@ -4,6 +4,16 @@ server:
 spring:
   application:
     name: user-service
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+      config:
+        server-addr: localhost:8848
+        file-extension: yaml
+  config:
+    import:
+      - nacos:user-service-dev.yaml?group=DEFAULT_GROUP
 
 # 管理端点配置
 management:

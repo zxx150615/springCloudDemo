@@ -42,9 +42,9 @@ public class UserController {
         
         // 这里应该调用Provider的/user/{id}接口，但为了简化，我们调用hello接口演示
         Map<String, Object> providerResponse = providerFeignClient.hello();
-        
-        Map<String, Object> result = new HashMap<>();
-        result.put("success", true);
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
         result.put("message", "通过Consumer服务获取用户信息");
         result.put("consumer", applicationName);
         result.put("consumerPort", serverPort);
@@ -52,7 +52,7 @@ public class UserController {
         result.put("providerResponse", providerResponse);
         result.put("timestamp", LocalDateTime.now());
         
-        return result;
+            return result;
     }
 
     /**
@@ -61,15 +61,15 @@ public class UserController {
     @GetMapping("/list")
     public Map<String, Object> getUserList() {
         log.info("Consumer获取用户列表");
-        
-        Map<String, Object> result = new HashMap<>();
-        result.put("success", true);
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
         result.put("message", "通过Consumer服务获取用户列表");
         result.put("consumer", applicationName);
         result.put("consumerPort", serverPort);
         result.put("timestamp", LocalDateTime.now());
         
-        return result;
+            return result;
     }
 
     /**
@@ -80,9 +80,9 @@ public class UserController {
         log.info("Consumer根据用户名获取用户，username: {}", username);
         
         Map<String, Object> providerResponse = providerFeignClient.hello(username);
-        
-        Map<String, Object> result = new HashMap<>();
-        result.put("success", true);
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
         result.put("message", "通过Consumer服务获取用户信息");
         result.put("consumer", applicationName);
         result.put("consumerPort", serverPort);

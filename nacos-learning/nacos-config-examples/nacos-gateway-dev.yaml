@@ -1,22 +1,163 @@
-# Nacos配置中心示例配置
-# Data ID: nacos-gateway-dev.yaml
-# Group: DEFAULT_GROUP
-# 命名空间: dev (可选)
+## Nacos 配置中心示例配置（nacos-gateway-dev.yaml）
+## 建议在 Nacos 中使用：
+##   Data ID : nacos-gateway-dev.yaml
+##   Group   : DEFAULT_GROUP
+##   类型    : YAML
 
-# 应用配置示例
+########################################################
+## 1. 应用元信息（可选）
+########################################################
 app:
   name: nacos-gateway
   version: 1.0.0
-  description: Nacos Gateway网关服务示例
+  description: Nacos Gateway 网关服务示例（从 Nacos 读取业务配置）
 
-# 自定义配置示例
-custom:
-  message: "这是Gateway从Nacos配置中心读取的配置"
-  timeout: 10000
-  enabled: true
+########################################################
+## 2. Redis 配置（用于限流等能力）
+##   对应原本本地的 spring.data.redis.*
+########################################################
+spring:
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password:
+      database: 0
+      timeout: 3000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
 
-# Gateway限流配置
+  ######################################################
+  ## 3. Gateway 路由 & 全局过滤 & 跨域配置
+  ##   对应原本本地的 spring.cloud.gateway.*
+  ######################################################
+  cloud:
+    gateway:
+      ## 3.1 服务发现路由开关
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+
+      ##################################################
+      ## 3.2 业务路由规则（user-service / order-service）
+      ##################################################
+      routes:
+        # 用户服务路由
+        - id: user-service-route
+          uri: lb://user-service
+          predicates:
+            - Path=/api/user/**
+          filters:
+            # 路径重写：去掉 /api 前缀
+            - StripPrefix=1
+            # 请求限流
+            - name: RequestRateLimiter
+              args:
+                # 限流键解析器：基于用户ID（从请求头 X-User-Id 或参数 userId 获取）
+                key-resolver: '#{@userKeyResolver}'
+                # 令牌桶每秒填充速率
+                redis-rate-limiter.replenishRate: 10
+                # 令牌桶容量（突发流量）
+                redis-rate-limiter.burstCapacity: 20
+
+        # 订单服务路由
+        - id: order-service-route
+          uri: lb://order-service
+          predicates:
+            - Path=/api/order/**
+          filters:
+            # 路径重写：去掉 /api 前缀
+            - StripPrefix=1
+            # 请求限流
+            - name: RequestRateLimiter
+              args:
+                # 限流键解析器：基于用户ID（从请求头 X-User-Id 或参数 userId 获取）
+                key-resolver: '#{@userKeyResolver}'
+                # 令牌桶每秒填充速率
+                redis-rate-limiter.replenishRate: 10
+                # 令牌桶容量（突发流量）
+                redis-rate-limiter.burstCapacity: 20
+
+      ##################################################
+      ## 3.3 全局过滤器（默认过滤器）
+      ##################################################
+      default-filters:
+        # 请求日志过滤器
+        - name: RequestLogging
+          args:
+            level: INFO
+
+      ##################################################
+      ## 3.4 全局跨域配置
+      ##################################################
+      globalcors:
+        cors-configurations:
+          "[/**]":
+            allowedOrigins: "*"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: false
+            maxAge: 3600
+
+########################################################
+## 4. Sa-Token 配置
+########################################################
+sa-token:
+  # token名称 (同时也是cookie名称)
+  token-name: Authorization
+  # token有效期，单位s 默认30天, -1代表永不过期
+  timeout: 2592000
+  # token临时有效期 (指定时间内无操作就视为token过期) 单位: 秒
+  activity-timeout: -1
+  # 是否允许同一账号并发登录 (为true时允许一起登录, 为false时新登录挤掉旧登录)
+  is-concurrent: true
+  # 在多人登录同一账号时，是否共用一个token (为true时所有登录共用一个token, 为false时每次登录新建一个token)
+  is-share: true
+  # token风格
+  token-style: uuid
+  # 是否输出操作日志
+  is-log: false
+  # 是否从cookie中读取token
+  is-read-cookie: false
+  # 是否从请求体里读取token
+  is-read-body: false
+  # 是否从请求头里读取token
+  is-read-head: true
+
+########################################################
+## 5. Gateway 自定义认证配置
+########################################################
 gateway:
-  rate-limit:
-    replenish-rate: 10
-    burst-capacity: 20
+  auth:
+    # 白名单路径（不需要认证的路径）
+    ignore-urls:
+      - /api/auth/login
+      - /api/auth/register
+      - /api/public/**
+      - /actuator/**
+    # 路径-角色映射（路径 -> 所需角色，多个角色用逗号分隔，拥有任意一个即可）
+    path-roles:
+      /api/admin/**: admin
+      /api/user/delete: admin
+      /api/user/**: user,admin
+      /api/order/**: user,admin
+
+########################################################
+## 6. 日志级别配置
+########################################################
+logging:
+  level:
+    com.zxx.learning: debug
+    org.springframework.cloud.gateway: debug
+    org.springframework.web: info
+    cn.dev33.satoken: info

@@ -70,7 +70,8 @@
                 <artifactId>sa-token-reactor-spring-boot-starter</artifactId>
                 <version>${sa-token.version}</version>
             </dependency>
-        </dependencyManagement>
+        </dependencies>
+    </dependencyManagement>
 
     <build>
         <pluginManagement>

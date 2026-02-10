@@ -23,13 +23,13 @@ import java.util.Map;
 @RestController
 @RequestMapping("/database")
 public class DatabaseConfigController {
-
+    
     @Autowired
     private DataSourceConfig dataSourceConfig;
-
+    
     @Autowired
     private DataSource dataSource;
-
+    
     /**
      * 获取数据库配置信息（不包含密码）
      */
@@ -44,7 +44,7 @@ public class DatabaseConfigController {
         }
         return result;
     }
-
+    
     /**
      * 测试数据库连接
      */
