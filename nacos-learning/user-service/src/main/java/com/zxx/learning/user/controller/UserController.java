@@ -43,21 +43,21 @@ public class UserController {
      * 根据ID获取用户
      * GET /user/{id}
      *
-     * 说明：该接口被 order-service 的 FeignClient 使用，保持返回 User DTO。
+     * 说明：统一响应格式为 {success, msg, data}
      */
     @GetMapping("/{id}")
-    public User getUserById(@PathVariable Long id) {
+    public Map<String, Object> getUserById(@PathVariable Long id) {
         log.info("根据ID获取用户，ID: {}", id);
 
         TUser entity = tUserService.getById(id);
         if (entity == null) {
             log.info("未找到ID为 {} 的用户", id);
-            return null;
+            return error("用户不存在");
         }
 
         User user = convertToDto(entity);
         log.info("返回用户: {}", user);
-        return user;
+        return success("获取成功", user);
     }
 
     /**
@@ -65,13 +65,14 @@ public class UserController {
      * GET /user/list
      */
     @GetMapping("/list")
-    public List<User> getUserList() {
+    public Map<String, Object> getUserList() {
         log.info("获取用户列表");
 
         List<TUser> list = tUserService.list();
-        return list.stream()
+        List<User> userList = list.stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
+        return success("获取成功", userList);
     }
 
     /**
@@ -83,11 +84,12 @@ public class UserController {
      *  - 密码与角色的完整管理将由后续内部接口（如 /user/internal/**）和网关逻辑补充。
      */
     @PostMapping
-    public User createUser(@RequestBody TUser request) {
+    public Map<String, Object> createUser(@RequestBody TUser request) {
         log.info("创建用户: {}", request);
 
         TUser created = tUserService.createUser(request);
-        return convertToDto(created);
+        User user = convertToDto(created);
+        return success("创建成功", user);
     }
 
     /**
@@ -95,16 +97,17 @@ public class UserController {
      * GET /user/username/{username}
      */
     @GetMapping("/username/{username}")
-    public User getUserByUsername(@PathVariable String username) {
+    public Map<String, Object> getUserByUsername(@PathVariable String username) {
         log.info("根据用户名获取用户，username: {}", username);
 
         TUser entity = tUserService.getByUsername(username);
         if (entity == null) {
             log.info("未找到用户名为 {} 的用户", username);
-            return null;
+            return error("用户不存在");
         }
 
-        return convertToDto(entity);
+        User user = convertToDto(entity);
+        return success("获取成功", user);
     }
 
     /**
@@ -262,6 +265,20 @@ public class UserController {
         return user;
     }
 
+    /**
+     * 返回成功响应
+     */
+    private Map<String, Object> success(String msg, Object data) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", true);
+        result.put("msg", msg);
+        result.put("data", data);
+        return result;
+    }
+
+    /**
+     * 返回错误响应
+     */
     private Map<String, Object> error(String msg) {
         Map<String, Object> result = new HashMap<>();
         result.put("success", false);
@@ -289,4 +306,5 @@ public class UserController {
          */
         private String email;
     }
+
 }

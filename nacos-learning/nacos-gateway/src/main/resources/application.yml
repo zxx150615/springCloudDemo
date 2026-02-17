@@ -42,11 +42,11 @@ spring:
       
       # 路由规则配置
       routes:
-        # 用户服务路由
+        # 用户服务路由（同时处理 /api/user/** 和 /api/admin/**）
         - id: user-service-route
           uri: lb://user-service
           predicates:
-            - Path=/api/user/**
+            - Path=/api/user/**,/api/admin/**
           filters:
             # 路径重写：去掉 /api 前缀
             - StripPrefix=1

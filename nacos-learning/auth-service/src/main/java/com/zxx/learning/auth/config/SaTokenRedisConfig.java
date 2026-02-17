@@ -1,11 +1,15 @@
 package com.zxx.learning.auth.config;
 
 import cn.dev33.satoken.dao.SaTokenDao;
+import cn.dev33.satoken.session.SaSession;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.util.StringUtils;
 
 import java.util.concurrent.TimeUnit;
 
@@ -48,6 +52,7 @@ public class SaTokenRedisConfig {
         private static final String TOKEN_SESSION_PREFIX = "satoken:token-session:";
 
         private final StringRedisTemplate redisTemplate;
+        private final ObjectMapper objectMapper = new ObjectMapper();
 
         @Override
         public String get(String key) {
@@ -124,7 +129,15 @@ public class SaTokenRedisConfig {
         @Override
         public Object getObject(String key) {
             try {
-                return redisTemplate.opsForValue().get(TOKEN_SESSION_PREFIX + key);
+                String value = redisTemplate.opsForValue().get(TOKEN_SESSION_PREFIX + key);
+                if (!StringUtils.hasText(value)) {
+                    return null;
+                }
+                // 反序列化为 SaSession 对象
+                return objectMapper.readValue(value, SaSession.class);
+            } catch (JsonProcessingException e) {
+                log.error("从 Redis 反序列化 token 会话异常, key={}", key, e);
+                return null;
             } catch (Exception e) {
                 log.error("从 Redis 读取 token 会话异常, key={}", key, e);
                 return null;
@@ -134,13 +147,20 @@ public class SaTokenRedisConfig {
         @Override
         public void setObject(String key, Object value, long timeout) {
             try {
-                String valueStr = value != null ? value.toString() : "";
+                if (value == null) {
+                    redisTemplate.delete(TOKEN_SESSION_PREFIX + key);
+                    return;
+                }
+                // 序列化为 JSON 字符串
+                String valueStr = objectMapper.writeValueAsString(value);
                 if (timeout > 0) {
                     redisTemplate.opsForValue().set(TOKEN_SESSION_PREFIX + key, valueStr, timeout, TimeUnit.SECONDS);
                 } else {
                     redisTemplate.opsForValue().set(TOKEN_SESSION_PREFIX + key, valueStr);
                 }
                 log.debug("向 Redis 写入 token 会话, key={}, timeout={}", key, timeout);
+            } catch (JsonProcessingException e) {
+                log.error("序列化 token 会话异常, key={}", key, e);
             } catch (Exception e) {
                 log.error("向 Redis 写入 token 会话异常, key={}", key, e);
             }
@@ -149,7 +169,12 @@ public class SaTokenRedisConfig {
         @Override
         public void updateObject(String key, Object value) {
             try {
-                String valueStr = value != null ? value.toString() : "";
+                if (value == null) {
+                    redisTemplate.delete(TOKEN_SESSION_PREFIX + key);
+                    return;
+                }
+                // 序列化为 JSON 字符串
+                String valueStr = objectMapper.writeValueAsString(value);
                 Long expire = redisTemplate.getExpire(TOKEN_SESSION_PREFIX + key);
                 if (expire != null && expire > 0) {
                     redisTemplate.opsForValue().set(TOKEN_SESSION_PREFIX + key, valueStr, expire, TimeUnit.SECONDS);
@@ -157,6 +182,8 @@ public class SaTokenRedisConfig {
                     redisTemplate.opsForValue().set(TOKEN_SESSION_PREFIX + key, valueStr);
                 }
                 log.debug("更新 Redis token 会话, key={}", key);
+            } catch (JsonProcessingException e) {
+                log.error("序列化 token 会话异常, key={}", key, e);
             } catch (Exception e) {
                 log.error("更新 Redis token 会话异常, key={}", key, e);
             }
