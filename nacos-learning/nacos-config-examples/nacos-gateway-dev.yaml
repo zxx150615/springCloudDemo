@@ -44,9 +44,26 @@ spring:
           lower-case-service-id: true
 
       ##################################################
-      ## 3.2 业务路由规则（user-service / order-service）
+      ## 3.2 业务路由规则（auth-service / user-service / order-service）
       ##################################################
       routes:
+        # 认证服务路由
+        - id: auth-service-route
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            # 不使用 StripPrefix，保持路径一致（auth-service Controller 已包含 /api/auth）
+            # 请求限流
+            - name: RequestRateLimiter
+              args:
+                # 限流键解析器：基于用户ID（从请求头 X-User-Id 或参数 userId 获取）
+                key-resolver: '#{@userKeyResolver}'
+                # 令牌桶每秒填充速率
+                redis-rate-limiter.replenishRate: 10
+                # 令牌桶容量（突发流量）
+                redis-rate-limiter.burstCapacity: 20
+
         # 用户服务路由
         - id: user-service-route
           uri: lb://user-service

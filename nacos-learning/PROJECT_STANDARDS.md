@@ -137,7 +137,18 @@ com.zxx.learning
     <groupId>org.springframework.cloud</groupId>
     <artifactId>spring-cloud-starter-openfeign</artifactId>
 </dependency>
+
+<!-- Spring Cloud LoadBalancer（OpenFeign 必需，用于服务名解析和负载均衡） -->
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-loadbalancer</artifactId>
+</dependency>
 ```
+
+**⚠️ 重要提示**：
+- 使用 OpenFeign 时，**必须同时添加** `spring-cloud-starter-loadbalancer` 依赖
+- 否则会出现错误：`No Feign Client for loadBalancing defined. Did you forget to include spring-cloud-starter-loadbalancer?`
+- LoadBalancer 会与 Nacos Discovery 配合，将服务名（如 `user-service`）解析为实际的服务实例地址
 
 #### 需要消息队列的模块
 
@@ -224,6 +235,18 @@ spring:
 - 示例: `nacos-provider-dev.yaml`, `nacos-gateway-prod.yaml`
 - 位置: `nacos-config-examples/` 目录
 
+#### 4. 配置编写与下发流程（Skill）
+
+- 所有微服务的**业务配置和环境配置**（如数据源、业务开关、超时、限流规则等）：
+  - 必须先在 `nacos-config-examples/` 目录下编写对应的 YAML 示例文件；
+  - 使用与示例文件同名的 Data ID 上传到 Nacos（例如：`nacos-user-service-dev.yaml`）；
+  - 各服务本地的 `application.yml` **只保留**：
+    - `server.port`
+    - `spring.application.name`
+    - Nacos 注册中心和配置中心的连接信息
+    - `spring.config.import` 或 `spring.cloud.nacos.config.shared-configs` 等“从 Nacos 拉配置”的入口；
+- 禁止在各服务的 `application.yml` 中直接硬编码数据库连接、业务参数等配置项，这些必须只存在于 Nacos 中（源头在 `nacos-config-examples/`）。
+
 ### 数据库配置规范
 
 数据库配置必须在 Nacos 配置中心的配置文件中：
@@ -263,6 +286,38 @@ spring:
 ```
 
 ## 💻 代码规范
+
+### Java 版本与兼容性（必须遵守）
+
+- **统一 Java 版本：`1.8`（Java 8）**
+  - 所有服务模块的 `source` / `target` 版本必须为 `1.8`。
+  - 编写任何 Java 代码时，都必须确保在 **Java 8 环境下可以正常编译**。
+
+- **禁止使用的 JDK 9+ API（仅列常见）**
+  - 禁止使用以下工厂方法（会导致类似“找不到符号: 方法 of(...) 位置: 接口 java.util.Map”报错）：
+    - `Map.of(...)`
+    - `List.of(...)`
+    - `Set.of(...)`
+    - `Map.copyOf(...)`
+  - 统一替代写法（示例）：
+    ```java
+    // ❌ 禁止
+    // Map<String, Object> body = Map.of("username", username, "password", password);
+
+    // ✅ 推荐（Java 8 兼容）
+    Map<String, Object> body = new HashMap<>();
+    body.put("username", username);
+    body.put("password", password);
+    ```
+
+- **语法限制**
+  - 不使用 Java 10+ 的 `var` 局部变量推断。
+  - 不使用 Java 14+ 的 `record`、`switch` 表达式、文本块字符串 `"""..."""` 等新语法。
+
+- **可使用的 Java 8 特性**
+  - 允许使用：Lambda 表达式、方法引用、`Stream`、`Optional`、接口 `default` 方法、`java.time` 时间 API 等，但前提是 **该类 / 方法在 Java 8 已存在**。
+
+> ⚠️ **开发自检**：新增或修改 Java 代码时，如果不确定某个类或方法是否为 Java 8 就存在，一律采用更传统、保守的写法（如使用 `new HashMap<>() + put`），避免再次出现 JDK 版本不兼容问题。
 
 ### Feign 客户端规范
 
@@ -369,6 +424,7 @@ public class OrderMessageConsumer implements RocketMQListener<Order> {
 
 ### 服务间调用检查
 - [ ] 使用了 OpenFeign（不是 RestTemplate）
+- [ ] **添加了 `spring-cloud-starter-loadbalancer` 依赖（OpenFeign 必需）**
 - [ ] Feign 客户端放在 `feign` 包下
 - [ ] 接口命名符合规范
 - [ ] 通过 Nacos 服务发现调用

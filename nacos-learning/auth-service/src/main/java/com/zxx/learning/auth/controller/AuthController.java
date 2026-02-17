@@ -1,8 +1,9 @@
-package com.zxx.learning.gateway.controller;
+package com.zxx.learning.auth.controller;
 
 import cn.dev33.satoken.stp.StpUtil;
-import com.zxx.learning.gateway.config.RedisRoleStore;
-import com.zxx.learning.gateway.config.RedisSkillStore;
+import com.zxx.learning.auth.config.RedisRoleStore;
+import com.zxx.learning.auth.config.RedisSkillStore;
+import com.zxx.learning.auth.feign.UserServiceFeign;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -10,16 +11,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Collections;
-
 import javax.annotation.Resource;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
- * 简单认证控制器
- * 提供登录与注册接口，直接在网关中创建 Sa-Token 登录会话
+ * 认证控制器
+ * 提供登录与注册接口，创建 Sa-Token 登录会话
  *
  * 访问路径示例：
  *  - POST /api/auth/login
@@ -41,9 +41,12 @@ public class AuthController {
     @Resource
     private RedisSkillStore redisSkillStore;
 
+    @Resource
+    private UserServiceFeign userServiceFeign;
+
     /**
-     * 简单登录接口
-     * 演示逻辑：用户名非空且密码等于 123456 即视为登录成功
+     * 登录接口
+     * 调用 user-service 校验用户名和密码，成功后创建 Sa-Token 会话并将角色写入 Redis。
      */
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
@@ -56,23 +59,76 @@ public class AuthController {
                     .body(error("用户名和密码不能为空"));
         }
 
-        // 简单密码校验，仅用于演示环境
-        if (!"123456".equals(password)) {
+        Map<String, Object> userInfoMap;
+        try {
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("username", username);
+            requestBody.put("password", password);
+            
+            Map<String, Object> response = userServiceFeign.validateLogin(requestBody);
+            
+            if (response == null) {
+                return ResponseEntity
+                        .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(error("用户服务无响应"));
+            }
+
+            Object successObj = response.get("success");
+            boolean success = successObj instanceof Boolean && (Boolean) successObj;
+            String msg = (String) response.getOrDefault("msg", "用户服务调用失败");
+
+            if (!success) {
+                return ResponseEntity
+                        .status(HttpStatus.UNAUTHORIZED)
+                        .body(error(msg));
+            }
+
+            Object dataObj = response.get("data");
+            if (!(dataObj instanceof Map)) {
+                return ResponseEntity
+                        .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(error("用户服务返回数据格式不正确"));
+            }
+            userInfoMap = (Map<String, Object>) dataObj;
+        } catch (Exception e) {
+            log.error("调用 user-service 校验登录失败, username={}", username, e);
             return ResponseEntity
-                    .status(HttpStatus.UNAUTHORIZED)
-                    .body(error("用户名或密码错误"));
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(error("用户服务异常，请稍后重试"));
         }
 
-        // 创建登录会话
+        String usernameFromResponse = (String) userInfoMap.get("username");
+        if (!StringUtils.hasText(usernameFromResponse)) {
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body(error("用户未注册"));
+        }
+        
+        Object statusObj = userInfoMap.get("status");
+        if (statusObj instanceof Number && ((Number) statusObj).intValue() == 0) {
+            return ResponseEntity
+                    .status(HttpStatus.FORBIDDEN)
+                    .body(error("用户已被禁用"));
+        }
+
+        // 创建登录会话（在同步请求线程里，Sa-Token 能拿到上下文）
         StpUtil.login(username);
+
+        // 将角色写入 Redis，供 Sa-Token 鉴权使用
+        String role = userInfoMap.get("role") != null ? String.valueOf(userInfoMap.get("role")) : "user";
+        if (!StringUtils.hasText(role)) {
+            role = "user";
+        }
+        redisRoleStore.addRole(username, role);
 
         Map<String, Object> data = new HashMap<>();
         data.put("loginId", StpUtil.getLoginIdAsString());
         data.put("token", StpUtil.getTokenValue());
         data.put("tokenName", StpUtil.getTokenName());
         data.put("expire", StpUtil.getTokenTimeout());
+        data.put("role", role);
 
-        log.info("用户登录成功, username={}, token={}", username, data.get("token"));
+        log.info("用户登录成功, username={}, role={}, token={}", username, role, data.get("token"));
 
         Map<String, Object> result = new HashMap<>();
         result.put("success", true);
@@ -83,13 +139,16 @@ public class AuthController {
     }
 
     /**
-     * 简单注册接口
-     * 仅做演示：校验用户名非空后，直接视为注册成功，并自动登录返回 token
-     * 支持在注册时指定角色和技能，如果不指定角色则默认分配 user 角色
+     * 注册接口
+     * 说明：
+     *  - 自注册场景：忽略前端传入的角色，统一使用 user；
+     *  - 调用 user-service 完成真正的用户创建与密码加密；
+     *  - 注册成功后自动登录，并将角色写入 Redis。
      */
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
         String username = request != null ? request.getUsername() : null;
+        String password = request != null ? request.getPassword() : null;
         String role = request != null ? request.getRole() : null;
         List<String> skills = request != null ? request.getSkills() : null;
 
@@ -98,12 +157,65 @@ public class AuthController {
                     .status(HttpStatus.BAD_REQUEST)
                     .body(error("用户名不能为空"));
         }
+        if (!StringUtils.hasText(password)) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(error("密码不能为空"));
+        }
 
-        // 为方便测试，注册成功后直接自动登录
+        // 自注册场景：强制设置为 user 角色，避免普通用户创建 admin
+        String registerRole = StringUtils.hasText(role) ? role.trim() : "user";
+        if (!"admin".equals(registerRole)) {
+            registerRole = "user";
+        }
+
+        Map<String, Object> userInfoMap;
+        try {
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("username", username);
+            requestBody.put("password", password);
+            requestBody.put("role", registerRole);
+            
+            Map<String, Object> response = userServiceFeign.register(requestBody);
+            
+            if (response == null) {
+                return ResponseEntity
+                        .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(error("用户服务无响应"));
+            }
+
+            Object successObj = response.get("success");
+            boolean success = successObj instanceof Boolean && (Boolean) successObj;
+            String msg = (String) response.getOrDefault("msg", "用户服务调用失败");
+
+            if (!success) {
+                return ResponseEntity
+                        .status(HttpStatus.BAD_REQUEST)
+                        .body(error(msg));
+            }
+
+            Object dataObj = response.get("data");
+            if (!(dataObj instanceof Map)) {
+                return ResponseEntity
+                        .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(error("用户服务返回数据格式不正确"));
+            }
+            userInfoMap = (Map<String, Object>) dataObj;
+        } catch (Exception e) {
+            log.error("调用 user-service 注册用户失败, username={}", username, e);
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(error("用户服务异常，请稍后重试"));
+        }
+
+        // 注册成功后直接自动登录（在同步请求线程里，Sa-Token 能拿到上下文）
         StpUtil.login(username);
 
-        // 分配角色：如果指定了角色则使用指定角色，否则默认分配 user 角色
-        String assignedRole = StringUtils.hasText(role) ? role.trim() : "user";
+        // 分配角色：以 user-service 返回为准
+        String assignedRole = userInfoMap.get("role") != null ? String.valueOf(userInfoMap.get("role")) : "user";
+        if (!StringUtils.hasText(assignedRole)) {
+            assignedRole = "user";
+        }
         redisRoleStore.addRole(username, assignedRole);
 
         // 分配技能：如果指定了技能则添加到 Redis
@@ -112,7 +224,7 @@ public class AuthController {
             log.info("为用户分配技能, username={}, skills={}", username, skills);
         }
 
-        log.info("模拟用户注册成功, username={}, role={}, skills={}", username, assignedRole, skills);
+        log.info("用户注册成功, username={}, role={}, skills={}", username, assignedRole, skills);
 
         Map<String, Object> data = new HashMap<>();
         data.put("loginId", StpUtil.getLoginIdAsString());
@@ -120,7 +232,7 @@ public class AuthController {
         data.put("tokenName", StpUtil.getTokenName());
         data.put("expire", StpUtil.getTokenTimeout());
         data.put("role", assignedRole);
-        data.put("skills", skills != null ? skills : java.util.Collections.emptyList());
+        data.put("skills", skills != null ? skills : Collections.emptyList());
 
         Map<String, Object> result = new HashMap<>();
         result.put("success", true);
@@ -298,4 +410,3 @@ public class AuthController {
         private List<String> skills;
     }
 }
-

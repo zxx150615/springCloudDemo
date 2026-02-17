@@ -11,6 +11,8 @@ spring:
       config:
         server-addr: localhost:8848
         file-extension: yaml
+  # 新增的业务配置请统一写在 nacos-config-examples/user-service-dev.yaml 中，
+  # 并上传到 Nacos；本地通过 spring.config.import 从 Nacos 拉取。
   config:
     import:
       - nacos:user-service-dev.yaml?group=DEFAULT_GROUP

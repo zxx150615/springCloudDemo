@@ -77,6 +77,24 @@ spring:
                 redis-rate-limiter.replenishRate: 10
                 # 每秒允许的请求数
                 redis-rate-limiter.burstCapacity: 20
+        
+        # 商家服务路由（在 user-service 中）
+        - id: merchant-service-route
+          uri: lb://user-service
+          predicates:
+            - Path=/api/merchant/**
+          filters:
+            # 路径重写：去掉 /api 前缀
+            - StripPrefix=1
+            # 请求限流
+            - name: RequestRateLimiter
+              args:
+                # 限流键解析器：基于用户ID（从请求头 X-User-Id 或参数 userId 获取）
+                key-resolver: '#{@userKeyResolver}'
+                # 令牌桶容量
+                redis-rate-limiter.replenishRate: 10
+                # 每秒允许的请求数
+                redis-rate-limiter.burstCapacity: 20
       
       # 全局过滤器配置
       default-filters:
@@ -148,6 +166,7 @@ gateway:
       /api/user/delete: admin
       /api/user/**: user,admin
       /api/order/**: user,admin
+      /api/merchant/**: user,admin
 
 # 日志配置
 logging:

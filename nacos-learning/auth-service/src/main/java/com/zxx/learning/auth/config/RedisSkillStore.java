@@ -1,4 +1,4 @@
-package com.zxx.learning.gateway.config;
+package com.zxx.learning.auth.config;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,8 +13,7 @@ import java.util.Set;
 /**
  * 使用 Redis 存储用户技能的实现（基于 StringRedisTemplate，同步版本）。
  *
- * <p><b>技术栈声明</b>：本项目统一使用 StringRedisTemplate（同步版本），不使用 ReactiveStringRedisTemplate。
- * 详见项目根目录下的 REDIS_TECH_STACK.md 文档。</p>
+ * <p><b>技术栈声明</b>：本项目统一使用 StringRedisTemplate（同步版本），不使用 ReactiveStringRedisTemplate。</p>
  *
  * <p>说明：
  * <ul>

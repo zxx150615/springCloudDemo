@@ -1,10 +1,12 @@
 package com.zxx.learning.generator.parser;
 
 import com.github.javaparser.JavaParser;
+import com.github.javaparser.ParseResult;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.comments.JavadocComment;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 import com.zxx.learning.generator.model.ColumnInfo;
 import com.zxx.learning.generator.util.StringUtil;
@@ -14,6 +16,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Java 代码解析器
@@ -38,7 +41,13 @@ public class JavaCodeParser {
         }
         
         try {
-            CompilationUnit cu = JavaParser.parse(entityFile);
+            ParseResult<CompilationUnit> parseResult = new JavaParser().parse(entityFile);
+            if (!parseResult.isSuccessful() || !parseResult.getResult().isPresent()) {
+                log.warn("解析 Entity 文件失败: {}", entityFile.getPath());
+                return fields;
+            }
+            
+            CompilationUnit cu = parseResult.getResult().get();
             
             cu.accept(new VoidVisitorAdapter<Void>() {
                 @Override
@@ -55,10 +64,14 @@ public class JavaCodeParser {
                     columnInfo.setJavaType(typeName);
                     
                     // 获取注释
-                    field.getJavadocComment().ifPresent(javadoc -> {
-                        String comment = javadoc.getDescription().toText();
-                        columnInfo.setComment(comment.trim());
-                    });
+                    Optional<JavadocComment> javadocOpt = field.getJavadocComment();
+                    if (javadocOpt.isPresent()) {
+                        JavadocComment javadoc = javadocOpt.get();
+                        String comment = javadoc.getContent();
+                        // 移除注释标记，只保留内容
+                        comment = comment.replaceAll("(?s)/\\*\\*|\\*/|\\*", "").trim();
+                        columnInfo.setComment(comment);
+                    }
                     
                     fields.add(columnInfo);
                 }
@@ -87,7 +100,13 @@ public class JavaCodeParser {
         }
         
         try {
-            CompilationUnit cu = JavaParser.parse(entityFile);
+            ParseResult<CompilationUnit> parseResult = new JavaParser().parse(entityFile);
+            if (!parseResult.isSuccessful() || !parseResult.getResult().isPresent()) {
+                log.warn("解析 Entity 文件失败: {}", entityFile.getPath());
+                return methods;
+            }
+            
+            CompilationUnit cu = parseResult.getResult().get();
             
             cu.accept(new VoidVisitorAdapter<Void>() {
                 @Override
