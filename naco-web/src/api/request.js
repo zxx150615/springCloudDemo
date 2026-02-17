@@ -52,8 +52,10 @@ request.interceptors.response.use(
     // 如果后端返回的是对象，检查 success 字段
     if (res && typeof res === 'object') {
       if (res.success === false) {
-        ElMessage.error(res.msg || '请求失败')
-        return Promise.reject(new Error(res.msg || '请求失败'))
+        // 优先使用 msg 字段，兼容 message 字段
+        const errorMsg = res.msg || res.message || '请求失败'
+        ElMessage.error(errorMsg)
+        return Promise.reject(new Error(errorMsg))
       }
       return res
     }
@@ -61,16 +63,59 @@ request.interceptors.response.use(
     return response
   },
   (error) => {
-    // 401 未授权，清除 token 并跳转登录
-    if (error.response && error.response.status === 401) {
-      clearToken()
-      ElMessage.error('登录已过期，请重新登录')
-      router.push('/login')
+    let errorMsg = '请求失败'
+    
+    // 处理 HTTP 响应错误
+    if (error.response) {
+      const { status, data } = error.response
+      
+      // 401 未授权，清除 token 并跳转登录
+      if (status === 401) {
+        clearToken()
+        errorMsg = '登录已过期，请重新登录'
+        ElMessage.error(errorMsg)
+        router.push('/login')
+        return Promise.reject(new Error(errorMsg))
+      }
+      
+      // 从响应体中提取错误信息
+      if (data) {
+        // 优先使用 msg 字段，兼容 message 字段
+        if (typeof data === 'object') {
+          errorMsg = data.msg || data.message || getStatusMessage(status)
+        } else if (typeof data === 'string') {
+          errorMsg = data
+        } else {
+          errorMsg = getStatusMessage(status)
+        }
+      } else {
+        errorMsg = getStatusMessage(status)
+      }
+    } else if (error.request) {
+      // 请求已发出但没有收到响应
+      errorMsg = '网络错误，请检查网络连接'
     } else {
-      ElMessage.error(error.message || '请求失败')
+      // 请求配置错误
+      errorMsg = error.message || '请求配置错误'
     }
-    return Promise.reject(error)
+    
+    ElMessage.error(errorMsg)
+    return Promise.reject(new Error(errorMsg))
   }
 )
+
+// 根据 HTTP 状态码返回友好的错误提示
+function getStatusMessage(status) {
+  const statusMessages = {
+    400: '请求参数错误',
+    403: '没有权限访问',
+    404: '请求的资源不存在',
+    500: '服务器内部错误',
+    502: '网关错误',
+    503: '服务不可用',
+    504: '网关超时'
+  }
+  return statusMessages[status] || `请求失败 (${status})`
+}
 
 export default request
