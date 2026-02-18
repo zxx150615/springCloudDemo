@@ -41,6 +41,21 @@ const routes = [
         path: 'orders',
         name: 'OrderList',
         component: () => import('@/views/OrderList.vue')
+      },
+      {
+        path: 'tools/json',
+        name: 'JsonTool',
+        component: () => import('@/views/JsonTool.vue')
+      },
+      {
+        path: 'tools/regex',
+        name: 'RegexTool',
+        component: () => import('@/views/RegexTool.vue')
+      },
+      {
+        path: 'tools/timestamp',
+        name: 'TimestampTool',
+        component: () => import('@/views/TimestampTool.vue')
       }
     ]
   }

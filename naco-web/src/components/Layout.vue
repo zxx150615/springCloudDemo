@@ -1,5 +1,5 @@
 <template>
-  <el-container>
+  <el-container class="layout-root">
     <el-header>
       <div class="header-content">
         <h2>Naco Web 管理平台</h2>
@@ -37,6 +37,24 @@
             <el-icon><Document /></el-icon>
             <span>订单管理</span>
           </el-menu-item>
+          <el-sub-menu index="/tools">
+            <template #title>
+              <el-icon><Tools /></el-icon>
+              <span>辅助工具</span>
+            </template>
+            <el-menu-item index="/tools/json">
+              <el-icon><Files /></el-icon>
+              <span>JSON转换</span>
+            </el-menu-item>
+            <el-menu-item index="/tools/regex">
+              <el-icon><Document /></el-icon>
+              <span>正则匹配</span>
+            </el-menu-item>
+            <el-menu-item index="/tools/timestamp">
+              <el-icon><Clock /></el-icon>
+              <span>时间戳转换</span>
+            </el-menu-item>
+          </el-sub-menu>
         </el-menu>
       </el-aside>
       <el-main>
@@ -51,7 +69,7 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getUser, clearToken } from '@/utils/auth'
 import { ElMessage } from 'element-plus'
-import { House, User, Shop, Document } from '@element-plus/icons-vue'
+import { House, User, Shop, Document, Tools, Files, Clock } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -111,5 +129,9 @@ const handleLogout = () => {
 .el-main {
   background-color: #f5f5f5;
   padding: 20px;
+}
+
+.layout-root {
+  min-height: 100vh;
 }
 </style>
